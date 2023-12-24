@@ -47,7 +47,8 @@ def generate_pairs(chunked_employees: list):
 
 
 def main(employees):
-    chunk_size = 4  # chunk size needs to be evenly distibuted (even number)!
+    chunk_size = 4  # Aim for an even chunk size to facilitate pairing; note that the last chunk's size may vary (even or odd).
+
 
     chunks = list(chunk_generator(employees, chunk_size))
 
