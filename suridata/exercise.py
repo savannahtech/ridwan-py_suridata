@@ -6,7 +6,7 @@ def clean_data(employees: list) -> list:
     """Clean duplicates from the data source using fields combination."""
     seen = set()  # keep track of seen combinations
     for each in employees:
-        key = tuple(each)
+        key = (each["name"], each["department"], each["age"])
         if key not in seen:
             seen.add(key)
             yield each
@@ -30,25 +30,24 @@ def chunk_generator(data, chunk_size):
         yield chunk
 
 
-def generate_pairs(chunked_employees):
+def generate_pairs(chunked_employees: list):
     """Generate random pairs ensuring uniqueness names."""
     random.shuffle(chunked_employees)
 
     pairs = []
     while len(chunked_employees) >= 2:
-        employee1 = chunked_employees.pop()[0]
-        employee2 = chunked_employees.pop()[0]
+        employee1 = chunked_employees.pop()["name"]
+        employee2 = chunked_employees.pop()["name"]
 
         # Ensure that the pair is unique
         if (employee1, employee2) not in pairs and (employee2, employee1) not in pairs:
             pairs.append((employee1, employee2))
 
-    # Handle the case when there is one employee left in the chunk
     return pairs
 
 
 def main(employees):
-    chunk_size = 4 #chunk size needs to be evenly distibuted (even number)!
+    chunk_size = 4  # chunk size needs to be evenly distibuted (even number)!
 
     chunks = list(chunk_generator(employees, chunk_size))
 
@@ -62,26 +61,12 @@ def main(employees):
 
 
 if __name__ == "__main__":
-    employees_list = [
-        ("John", "Engineer", 170),
-        ("Doe", "Doctor", 180),
-        ("Smith", "Artist", 160),
-
-        ("Jane", "Lawyer", 175),
-        ("Ray", "Lawyer", 175),
-        ("Lee", "Lawyer", 175),
-
-        ("Python", "Lawyer", 175),
-        ("Node", "Lawyer", 175),
-        ("Billy", "Engineer", 170),
-
-        ("Kay", "Doctor", 180),
-        ("Mayegun", "Engineer", 170),
-        ("Ajayi", "Doctor", 180),
-
-        ("John", "Engineer", 170),  # Duplicate
-        ("Doe", "Doctor", 180),  # Duplicate
+    employees = [
+        {"department": "R&D", "name": "emp1", "age": 46},
+        {"department": "Sales", "name": "emp2", "age": 28},
+        {"department": "R&D", "name": "emp3", "age": 33},
+        {"department": "R&D", "name": "emp4", "age": 29},
     ]
 
-    unique_pairs = main(employees_list)
+    unique_pairs = main(employees)
     print("Final Unique Pairs:", unique_pairs)
