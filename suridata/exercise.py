@@ -31,7 +31,7 @@ def chunk_generator(data, chunk_size):
         yield chunk
 
 
-def generate_pairs(chunked_employees: list, paired: list, first_employees: list):
+def generate_pairs(chunked_employees: list, paired: list, first_employees, used_first_employees, lock):
     """Generate random pairs ensuring uniqueness and fairness."""
     random.shuffle(chunked_employees)
 
@@ -44,18 +44,26 @@ def generate_pairs(chunked_employees: list, paired: list, first_employees: list)
 
         # create another pair where employee2 is first i.e (employee2, x)
         random_employee = None
+
         while not random_employee:
             try:
                 random_employee = random.choice(first_employees)
-                if random_employee == employee1:
+                if random_employee == employee1: # continue pair search 
                     random_employee = None
+                    continue
             except IndexError:
                 random_employee = None
+            
+            if random_employee and random_employee not in used_first_employees:
+                with lock: # 
+                    used_first_employees.add(random_employee)
+                    paired.append((employee2, random_employee))
+                    break
+            else:
+                random_employee = None
 
-        paired.append((employee2, random_employee))
 
-
-def main(employees, chunk_size=40):
+def main(employees, chunk_size=30):
     # Aim for an even chunk size(data) to facilitate pairing
     # Note: Preset size of each chunk must be even.
 
@@ -64,10 +72,13 @@ def main(employees, chunk_size=40):
     with Manager() as manager:
         paired = manager.list()
         first_employees = manager.list()
+        used_first_employees = set()
+        lock = manager.Lock()
+
 
         with Pool() as pool:
             pool.starmap(
-                generate_pairs, [(chunk, paired, first_employees) for chunk in chunks]
+                generate_pairs, [(chunk, paired, first_employees, used_first_employees, lock) for chunk in chunks]
             )
 
         paired_list = list(paired)
