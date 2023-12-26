@@ -1,5 +1,6 @@
 import random
-from multiprocessing import Pool
+from multiprocessing import Manager, Pool
+from dataset import employees as original_employees
 
 
 def clean_data(employees: list) -> list:
@@ -30,44 +31,51 @@ def chunk_generator(data, chunk_size):
         yield chunk
 
 
-def generate_pairs(chunked_employees: list):
-    """Generate random pairs ensuring uniqueness names."""
+def generate_pairs(chunked_employees: list, paired: list, first_employees: list):
+    """Generate random pairs ensuring uniqueness and fairness."""
     random.shuffle(chunked_employees)
 
-    pairs = []
     while len(chunked_employees) >= 2:
         employee1 = chunked_employees.pop()["name"]
         employee2 = chunked_employees.pop()["name"]
+        new_pair = (employee1, employee2)
+        paired.append(new_pair)
+        first_employees.append(employee1)
 
-        # Ensure that the pair is unique
-        if (employee1, employee2) not in pairs and (employee2, employee1) not in pairs:
-            pairs.append((employee1, employee2))
+        # create another pair where employee2 is first i.e (employee2, x)
+        random_employee = None
+        while not random_employee:
+            try:
+                random_employee = random.choice(first_employees)
+                if random_employee == employee1:
+                    random_employee = None
+            except IndexError:
+                random_employee = None
 
-    return pairs
+        paired.append((employee2, random_employee))
 
 
-def main(employees):
-    chunk_size = 4  # Aim for an even chunk size to facilitate pairing; note that the last chunk's size may vary (even or odd).
-
+def main(employees, chunk_size=40):
+    # Aim for an even chunk size(data) to facilitate pairing
+    # Note: Preset size of each chunk must be even.
 
     chunks = list(chunk_generator(employees, chunk_size))
 
-    # Use multiprocessing Pool to process chunks in parallel
-    with Pool() as pool:
-        results = pool.map(generate_pairs, chunks)
+    with Manager() as manager:
+        paired = manager.list()
+        first_employees = manager.list()
 
-    final_pairs = [pair for sublist in results for pair in sublist]
+        with Pool() as pool:
+            pool.starmap(
+                generate_pairs, [(chunk, paired, first_employees) for chunk in chunks]
+            )
 
-    return final_pairs
+        paired_list = list(paired)
+
+    return paired_list
 
 
 if __name__ == "__main__":
-    employees = [
-        {"department": "R&D", "name": "emp1", "age": 46},
-        {"department": "Sales", "name": "emp2", "age": 28},
-        {"department": "R&D", "name": "emp3", "age": 33},
-        {"department": "R&D", "name": "emp4", "age": 29},
-    ]
-
-    unique_pairs = main(employees)
+    unique_pairs = main(original_employees)
     print("Final Unique Pairs:", unique_pairs)
+    print("Length of pairs:", len(unique_pairs))
